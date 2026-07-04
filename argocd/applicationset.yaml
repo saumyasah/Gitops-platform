@@ -1,0 +1,42 @@
+# Auto-discovers every directory under overlays/ and creates one ArgoCD
+# Application per environment — adding a new environment is just adding a
+# new overlay directory, no manual ArgoCD Application to write by hand.
+# This is what cuts new-environment setup from hours to minutes.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: web-app-environments
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/your-org/gitops-multi-env-platform.git
+        revision: main
+        directories:
+          - path: overlays/*
+  template:
+    metadata:
+      name: 'web-app-{{path.basename}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/your-org/gitops-multi-env-platform.git
+        targetRevision: main
+        path: '{{path}}'
+      destination:
+        server: '{{server}}'
+        namespace: '{{path.basename}}'
+      syncPolicy:
+        # dev and staging auto-sync; prod is sync-only-on-manual-trigger
+        # (see per-env override below via ArgoCD sync windows / manual apps)
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

@@ -1,0 +1,54 @@
+# Scopes what each environment's ArgoCD Application is allowed to touch,
+# and which repos/clusters it can deploy from/to — prod is scoped tighter
+# than dev, and only specific roles can manually sync prod.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: web-app-dev
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/your-org/gitops-multi-env-platform.git
+  destinations:
+    - namespace: dev
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: web-app-staging
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/your-org/gitops-multi-env-platform.git
+  destinations:
+    - namespace: staging
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: web-app-prod
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/your-org/gitops-multi-env-platform.git
+  destinations:
+    - namespace: prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: prod-deployer
+      description: Only senior on-call engineers can manually sync prod
+      policies:
+        - p, proj:web-app-prod:prod-deployer, applications, sync, web-app-prod/*, allow
+      groups:
+        - your-org:senior-oncall
